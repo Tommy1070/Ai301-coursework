@@ -13,19 +13,19 @@ label is not graded.
 
 ## Posted upstream
 
-**GitHub username**
-
-[Your GitHub username, exactly as it appears on your profile - no @, no
-profile URL. Your comment upstream is identified by this name, and it is
-the only thing that ties it to you. Several students may plan the same
-house issue, so this is what keeps their comments off your score and
-yours off theirs.]
+Tommy1070
 
 **Plan comment**
 
-[Link to the comment where you posted your plan on the issue. Use the comment's own
-permalink. **Then paste the text of that comment underneath the link** — the pasted text is
-what this field is graded on, so copy across what you actually posted.]
+https://github.com/codepath/pathreview-ai301-fa26-s3/issues/69#issuecomment-6021253855
+
+**Plan comment exact text**
+
+I reproduced #69 and traced the failure to the JSON parsing path. A valid top-level JSON array is successfully parsed by `json.loads()`, but `_parse_json_output()` currently assumes the result is a dictionary and calls `.items()`, which raises `AttributeError` when the parsed value is a list.
+
+My plan is to add explicit handling for top-level JSON arrays while preserving the existing dictionary and plaintext behavior. I’ll account for both raw JSON and fenced JSON paths that can reach `_parse_json_output()`. I’ll also update the existing `test_json_array_fallback` regression coverage and remove its `xfail` marker as part of the fix.
+
+For validation, I’ll rerun the original reproduction and the full `tests/unit/test_output_parser.py` test file. The reproduction confirms the `.items()` failure, but I’ll verify the appropriate `FeedbackSection` representation for array items during implementation rather than assuming it in advance.
 
 ---
 
@@ -33,45 +33,85 @@ what this field is graded on, so copy across what you actually posted.]
 
 **Branch**
 
-[The name of the branch you built the change on, exactly as it appears in your fork. The
-naming shape is a type prefix, then the issue number, then a short description. **The issue
-number in the branch name must be the number of the issue you claimed** — a name carrying
-any other number does not satisfy this field.]
+fix/69-json-array-fallback
 
 **Evidence**
 
-[Your Unit 2 reproduction steps re-run against the built change: the before, then the
-after. Paste both, including the commands you ran and their output.]
+Before:
+
+Command:
+
+`python -m pytest .\tests\unit\test_output_parser.py::TestOutputParser::test_json_array_fallback -vv --runxfail`
+
+Output:
+
+`AttributeError: 'list' object has no attribute 'items'`
+
+The failure occurred in `rag\generator\output_parser.py:68` when `_parse_json_output()` called `data.items()` on the parsed top-level JSON array.
+
+After:
+
+Command:
+
+`python -m pytest .\tests\unit\test_output_parser.py::TestOutputParser::test_json_array_fallback -vv`
+
+Output:
+
+`1 passed in 0.45s`
+
+Full parser regression run:
+
+Command:
+
+`python -m pytest .\tests\unit\test_output_parser.py -vv`
+
+Output:
+
+`19 passed in 0.23s`
 
 ## Eval iterations
 
-Answer all four sections. Quote source text directly; paraphrase does not satisfy these
-fields.
-
 **Run history**
 
-[The agreement score of each run you did, in order. A single run is a complete answer if
-only one run occurred. **The last score in your list must match the agreement line in the
-`eval-run.txt` you committed** — that file is the record of your final run.]
+`18/20`
+
+The full evaluation run produced:
+
+`agreement: 18/20 scored items  (bar: 18/20: PASS)`
 
 **Package analysis**
 
-[Pick one scored package (`pkg-01` through `pkg-20` — the four `calib-` packages are never
-scored). Name it by id, say what your rubric decided and what the gold label said, and
-explain why your rubric read it that way.]
+`pkg-05`
+
+My rubric decided: `reject`
+
+Gold label: `accept`
+
+The evaluation reported:
+
+`failed: Risks and unknowns are honest`
+
+My check requires unresolved assumptions to be labeled as unknowns and their impact explained. The package was otherwise a clear-accept example, but my rubric read its treatment of risks and unknowns as insufficiently explicit, so it rejected the package while the gold label accepted it.
 
 **Check rationale**
 
-[Quote one check from the `rubric.md` you uploaded to `tools/plan-check/`, exactly as it reads now.
-Then say why it reads that way — what you revised to get there, or what you rejected in
-favour of it.]
+Check from my uploaded `rubric.md`:
+
+`Risks and unknowns are honest`
+
+Evidence:
+
+`risks/unknowns vs repro and repo facts.`
+
+Pass condition:
+
+`unresolved assumptions labeled unknown, impact explained.`
+
+I kept this check because a plan should distinguish reproduced facts from implementation assumptions. During my own issue #69 plan, I knew the reproduction proved the `.items()` crash, but it did not prove the correct `FeedbackSection` representation for each array item. Requiring that uncertainty to be stated prevents a plan from presenting an unverified implementation choice as confirmed behavior.
 
 **Trade-offs**
 
-[Every check gives something up. Any one of these is a complete answer: a package whose
-result it changes, a canary you re-ran with `--only`, a case you accept it will miss, or a
-stated reason nothing changed elsewhere. "Nothing changed, and here is how I know" earns
-the point in full when the reason follows.]
+The stricter risks-and-unknowns check changed the result for `pkg-05`: the gold label was `accept`, while my rubric returned `reject`. I accept that trade-off because the check intentionally requires plans to make unresolved implementation assumptions explicit. The final evaluation still reached `18/20`, and every evaluation category had at least one matching result.
 
 ---
 
